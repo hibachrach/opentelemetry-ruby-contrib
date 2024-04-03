@@ -73,10 +73,10 @@ describe 'OpenTelemetry::Instrumentation::Rack::Middlewares::EventHandler' do
     end
 
     it 'record a span' do
-      _(rack_span.attributes['http.method']).must_equal 'GET'
-      _(rack_span.attributes['http.status_code']).must_equal 200
-      _(rack_span.attributes['http.target']).must_equal '/'
-      _(rack_span.attributes['http.url']).must_be_nil
+      _(rack_span.attributes['http.request.method']).must_equal 'GET'
+      _(rack_span.attributes['http.response.status_code']).must_equal 200
+      _(rack_span.attributes['url.path']).must_equal '/'
+      _(rack_span.attributes['url.full']).must_be_nil
       _(rack_span.name).must_equal 'HTTP GET'
       _(rack_span.kind).must_equal :server
       _(rack_span.status.code).must_equal OpenTelemetry::Trace::Status::UNSET
@@ -88,7 +88,8 @@ describe 'OpenTelemetry::Instrumentation::Rack::Middlewares::EventHandler' do
       let(:uri) { '/endpoint?query=true' }
 
       it 'records the query path' do
-        _(rack_span.attributes['http.target']).must_equal '/endpoint?query=true'
+        _(rack_span.attributes['url.path']).must_equal '/endpoint'
+        _(rack_span.attributes['url.query']).must_equal 'query=true'
         _(rack_span.name).must_equal 'HTTP GET'
       end
     end
@@ -100,10 +101,10 @@ describe 'OpenTelemetry::Instrumentation::Rack::Middlewares::EventHandler' do
         it 'does not trace paths listed in the array' do
           get '/ping'
 
-          ping_span = finished_spans.find { |s| s.attributes['http.target'] == '/ping' }
+          ping_span = finished_spans.find { |s| s.attributes['url.path'] == '/ping' }
           _(ping_span).must_be_nil
 
-          root_span = finished_spans.find { |s| s.attributes['http.target'] == '/' }
+          root_span = finished_spans.find { |s| s.attributes['url.path'] == '/' }
           _(root_span).wont_be_nil
         end
       end
@@ -114,10 +115,10 @@ describe 'OpenTelemetry::Instrumentation::Rack::Middlewares::EventHandler' do
         it 'traces everything' do
           get '/ping'
 
-          ping_span = finished_spans.find { |s| s.attributes['http.target'] == '/ping' }
+          ping_span = finished_spans.find { |s| s.attributes['url.path'] == '/ping' }
           _(ping_span).wont_be_nil
 
-          root_span = finished_spans.find { |s| s.attributes['http.target'] == '/' }
+          root_span = finished_spans.find { |s| s.attributes['url.path'] == '/' }
           _(root_span).wont_be_nil
         end
       end
@@ -132,10 +133,10 @@ describe 'OpenTelemetry::Instrumentation::Rack::Middlewares::EventHandler' do
         it 'does not trace requests in which the callable returns true' do
           get '/assets'
 
-          assets_span = finished_spans.find { |s| s.attributes['http.target'] == '/assets' }
+          assets_span = finished_spans.find { |s| s.attributes['url.path'] == '/assets' }
           _(assets_span).must_be_nil
 
-          root_span = finished_spans.find { |s| s.attributes['http.target'] == '/' }
+          root_span = finished_spans.find { |s| s.attributes['url.path'] == '/' }
           _(root_span).wont_be_nil
         end
       end
@@ -146,10 +147,10 @@ describe 'OpenTelemetry::Instrumentation::Rack::Middlewares::EventHandler' do
         it 'traces everything' do
           get '/assets'
 
-          asset_span = finished_spans.find { |s| s.attributes['http.target'] == '/assets' }
+          asset_span = finished_spans.find { |s| s.attributes['url.path'] == '/assets' }
           _(asset_span).wont_be_nil
 
-          root_span = finished_spans.find { |s| s.attributes['http.target'] == '/' }
+          root_span = finished_spans.find { |s| s.attributes['url.path'] == '/' }
           _(root_span).wont_be_nil
         end
       end
@@ -236,7 +237,7 @@ describe 'OpenTelemetry::Instrumentation::Rack::Middlewares::EventHandler' do
       end
 
       it 'leaves status code unset' do
-        _(rack_span.attributes['http.status_code']).must_equal 404
+        _(rack_span.attributes['http.response.status_code']).must_equal 404
         _(rack_span.kind).must_equal :server
         _(rack_span.status.code).must_equal OpenTelemetry::Trace::Status::UNSET
       end
@@ -250,7 +251,7 @@ describe 'OpenTelemetry::Instrumentation::Rack::Middlewares::EventHandler' do
           get '/really_long_url'
 
           _(rack_span.name).must_equal 'HTTP GET'
-          _(rack_span.attributes['http.target']).must_equal '/really_long_url'
+          _(rack_span.attributes['url.path']).must_equal '/really_long_url'
         end
       end
 
@@ -265,7 +266,7 @@ describe 'OpenTelemetry::Instrumentation::Rack::Middlewares::EventHandler' do
           get '/really_long_url'
 
           _(rack_span.name).must_equal '/really_long_url'
-          _(rack_span.attributes['http.target']).must_equal '/really_long_url'
+          _(rack_span.attributes['url.path']).must_equal '/really_long_url'
         end
       end
 
@@ -290,7 +291,7 @@ describe 'OpenTelemetry::Instrumentation::Rack::Middlewares::EventHandler' do
           get '/really_long_url', {}, { 'REQUEST_URI' => '/action-dispatch-uri' }
 
           _(rack_span.name).must_equal 'HTTP GET'
-          _(rack_span.attributes['http.target']).must_equal '/really_long_url'
+          _(rack_span.attributes['url.path']).must_equal '/really_long_url'
         end
       end
 
@@ -305,7 +306,7 @@ describe 'OpenTelemetry::Instrumentation::Rack::Middlewares::EventHandler' do
           get '/really_long_url', {}, { 'REQUEST_URI' => '/action-dispatch-uri' }
 
           _(rack_span.name).must_equal '/action-dispatch-uri'
-          _(rack_span.attributes['http.target']).must_equal '/really_long_url'
+          _(rack_span.attributes['url.path']).must_equal '/really_long_url'
         end
       end
 
@@ -399,10 +400,10 @@ describe 'OpenTelemetry::Instrumentation::Rack::Middlewares::EventHandler' do
 
     it 'has access to a Rack read/write span' do
       get '/'
-      _(rack_span.attributes['http.method']).must_equal 'GET'
-      _(rack_span.attributes['http.status_code']).must_equal 200
-      _(rack_span.attributes['http.target']).must_equal '/'
-      _(rack_span.attributes['http.url']).must_be_nil
+      _(rack_span.attributes['http.request.method']).must_equal 'GET'
+      _(rack_span.attributes['http.response.status_code']).must_equal 200
+      _(rack_span.attributes['url.path']).must_equal '/'
+      _(rack_span.attributes['url.full']).must_be_nil
       _(rack_span.name).must_equal 'HTTP GET'
       _(rack_span.kind).must_equal :server
       _(rack_span.status.code).must_equal OpenTelemetry::Trace::Status::UNSET

@@ -123,7 +123,7 @@ module OpenTelemetry
           end
 
           def extract_response_attributes(response)
-            attributes = { 'http.status_code' => response.status.to_i }
+            attributes = { 'http.response.status_code' => response.status.to_i }
             attributes.merge!(extract_response_headers(response.headers))
             attributes
           end
@@ -180,13 +180,14 @@ module OpenTelemetry
 
           def request_span_attributes(env)
             attributes = {
-              'http.method' => env['REQUEST_METHOD'],
+              'http.request.method' => env['REQUEST_METHOD'],
               'http.host' => env['HTTP_HOST'] || 'unknown',
-              'http.scheme' => env['rack.url_scheme'],
-              'http.target' => env['QUERY_STRING'].empty? ? env['PATH_INFO'] : "#{env['PATH_INFO']}?#{env['QUERY_STRING']}"
+              'url.scheme' => env['rack.url_scheme'],
+              'url.path' => env['PATH_INFO'],
+              'url.query' => env['QUERY_STRING']
             }
 
-            attributes['http.user_agent'] = env['HTTP_USER_AGENT'] if env['HTTP_USER_AGENT']
+            attributes['user_agent.original'] = env['HTTP_USER_AGENT'] if env['HTTP_USER_AGENT']
             attributes.merge!(extract_request_headers(env))
             attributes
           end
